@@ -22,11 +22,6 @@ class UserRegister(User, UserLogin):
     pass
 
 
-class UserResponce(User):
-    id: int = Field(ge=0)
-    email: EmailStr
-
-
 class TokenSchemas(BaseModel):
     token: str
     type_token: str = Field(default="Bearer")

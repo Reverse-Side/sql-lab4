@@ -8,4 +8,11 @@ class User(BaseModel):
 class UserResponce(User):
     id: int = Field(ge=0)
     email: EmailStr
-    image: FileUrl | None
+
+    class Config:
+        from_attributes = True
+
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=20)
+    email: EmailStr | None = Field(default=None)

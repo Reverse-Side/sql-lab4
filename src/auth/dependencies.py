@@ -17,8 +17,8 @@ def get_auth(
     try:
         token = creds.credentials
         token_info = service.auth(token)
-        if token is None:
-            raise AuthenticationError("Not token info")
+        if token_info is None:
+            raise HTTPException(403, detail="Auth not user")
         return token_info
     except AuthenticationError:
         raise HTTPException(403, detail="Auth not user")
@@ -28,8 +28,6 @@ AuthUser = Annotated[TokenInfo, Depends(get_auth)]
 
 
 def get_admin(user: AuthUser) -> TokenInfo:
-    if user is None:
-        raise HTTPException(status_code=403, detail="Invalid Token")
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Only admin")
 

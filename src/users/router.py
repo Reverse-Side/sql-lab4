@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Annotated
 from src.auth.dependencies import AuthAdmin, AuthUser
+from src.mixin_schemas import Collection, Pagination
 from src.users.dependencies import UserServiceDep
 from src.users.schemas import UserResponce, UserUpdate, UserUpdate
 
@@ -41,6 +42,14 @@ async def update_me(
     user_id: int, user_update: UserUpdate, service: UserServiceDep, payload: AuthAdmin
 ):
     responce = await service.update(_id=user_id, data=user_update)
+    if responce:
+        return responce
+    raise user_not_found
+
+
+@router.get("", response_model=Collection[UserResponce])
+async def get_list(service: UserServiceDep, pagin=Depends(Pagination)):
+    responce = await service.get_list(pagin)
     if responce:
         return responce
     raise user_not_found

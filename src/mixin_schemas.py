@@ -8,8 +8,8 @@ class CreatedAtMixin(BaseModel):
 
 
 class Pagination(BaseModel):
-    offset: int = Field(gte=0)
-    limit: int = Field(ge=0, le=200)
+    offset: int = Field(default=0, gte=0)
+    limit: int = Field(default=10, ge=0, le=200)
 
 
 T = TypeVar("T")
@@ -18,6 +18,3 @@ T = TypeVar("T")
 class Collection(Pagination, Generic[T]):
     collection: list[T]
     size: int
-
-    def model_post_init(self, __context__=None) -> None:
-        self.size = len(self.collection)

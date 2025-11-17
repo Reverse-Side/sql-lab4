@@ -4,33 +4,54 @@ from src.filter import eq
 from .schemas import EventCreate, EventUpdate, EventResponse
 from .models import EventORM
 from .exceptions import EventNotFoundError, EventPermissionError
+from src.tickets.service import TicketServiceDep
+from src.tickets.schemas import TicketCreate
+from datetime import datetime
 
 
 class EventService:
-    """Клас сервісу для управління бізнес-логікою подій."""
 
-    def __init__(self, uow: IUnitOfWork):
+    def __init__(self, uow: IUnitOfWork, ticket_service: TicketServiceDep):
         self.uow = uow
+        self.ticket_service = ticket_service
 
     async def create_event(
         self, event_data: EventCreate, owner_id: int
     ) -> EventResponse:
-        """Створює нову подію та призначає її поточному користувачу."""
-
+        
         async with self.uow as work:
             event_dict = event_data.model_dump()
+            
+            # ВИПРАВЛЕННЯ: Видалення інформації про часовий пояс для сумісності з PostgreSQL TIMESTAMP WITHOUT TIME ZONE
+            if 'start_time' in event_dict and event_dict['start_time'].tzinfo is not None:
+                event_dict['start_time'] = event_dict['start_time'].replace(tzinfo=None)
+            
+            if 'end_time' in event_dict and event_dict['end_time'].tzinfo is not None:
+                event_dict['end_time'] = event_dict['end_time'].replace(tzinfo=None)
 
             new_event_orm = await work.events.add(
                 data={**event_dict, "owner_id": owner_id}
             )
+
+            # Логіка створення квитка
+            if "price" in event_dict and "amount" in event_dict:
+                ticket_create_data = TicketCreate(
+                    event_id=new_event_orm.id,
+                    ticket_type="Standard", # Припускаємо, що це стандартний тип
+                    price=event_dict["price"],
+                    amount=event_dict["amount"]
+                )
+                await self.ticket_service.create_ticket(
+                    ticket_data=ticket_create_data,
+                    owner_id=owner_id # Або інший логін, якщо квиток створює не адміністратор
+                )
 
             await work.commit()
 
             return EventResponse.model_validate(new_event_orm)
 
     async def get_event(self, event_id: int) -> EventResponse:
-        """Повертає одну подію за її ID."""
-
+        
         async with self.uow as work:
             event_orm = await work.events.find(id=eq(event_id))
 
@@ -40,8 +61,7 @@ class EventService:
             return EventResponse.model_validate(event_orm)
 
     async def get_all_events(self) -> List[EventResponse]:
-        """Повертає список усіх подій."""
-
+        
         async with self.uow as work:
             events_orm = await work.events.find_all()
 
@@ -50,19 +70,25 @@ class EventService:
     async def update_event(
         self, event_id: int, update_data: EventUpdate, current_user_id: int
     ) -> EventResponse:
-        """Оновлює дані події після перевірки прав доступу."""
-
+        
         async with self.uow as work:
             event_orm = await work.events.find(id=eq(event_id))
 
             if not event_orm:
                 raise EventNotFoundError(f"Подію з ID {event_id} не знайдено.")
 
-            # БІЗНЕС-ПРАВИЛО: Перевірка прав
             if event_orm.owner_id != current_user_id:
                 raise EventPermissionError("Ви можете оновлювати лише власні події.")
 
             update_dict = update_data.model_dump(exclude_unset=True)
+
+            # ВИПРАВЛЕННЯ: Видалення інформації про часовий пояс для оновлення
+            if 'start_time' in update_dict and update_dict['start_time'].tzinfo is not None:
+                update_dict['start_time'] = update_dict['start_time'].replace(tzinfo=None)
+            
+            if 'end_time' in update_dict and update_dict['end_time'].tzinfo is not None:
+                update_dict['end_time'] = update_dict['end_time'].replace(tzinfo=None)
+
 
             updated_event_orm = await work.events.update(_id=event_id, data=update_dict)
 
@@ -74,15 +100,13 @@ class EventService:
             return EventResponse.model_validate(updated_event_orm)
 
     async def delete_event(self, event_id: int, current_user_id: int) -> bool:
-        """Видаляє подію після перевірки прав доступу."""
-
+        
         async with self.uow as work:
             event_orm = await work.events.find(id=eq(event_id))
 
             if not event_orm:
                 raise EventNotFoundError(f"Подію з ID {event_id} не знайдено.")
 
-            # БІЗНЕС-ПРАВИЛО: Перевірка прав
             if event_orm.owner_id != current_user_id:
                 raise EventPermissionError("Ви можете видаляти лише власні події.")
 

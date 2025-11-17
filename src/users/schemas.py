@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr, Field, FileUrl
 
 
 class User(BaseModel):
-    username: str = Field(min_length=3, max_length=20)
+    nickname: str = Field(min_length=3, max_length=20)
 
 
 class UserResponce(User):
@@ -14,5 +14,5 @@ class UserResponce(User):
 
 
 class UserUpdate(BaseModel):
-    username: str | None = Field(default=None, min_length=3, max_length=20)
+    nickmame: str | None = Field(default=None, min_length=3, max_length=20)
     email: EmailStr | None = Field(default=None)

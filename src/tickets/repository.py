@@ -3,4 +3,5 @@ from src.tickets.models import TicketsORM
 
 
 class TicketsRepository(RepositoryORM[TicketsORM]):
+    model = TicketsORM
     pass

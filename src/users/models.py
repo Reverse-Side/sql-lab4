@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 class UserORM(Base, CreatedAtMixin):
     __tablename__ = "users"
-    username: Mapped[str]
+    nickname: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password: Mapped[str]
 

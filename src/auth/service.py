@@ -118,7 +118,7 @@ class AuthService:
         payload = TokenCreate(
             type=type_,
             sub=user.id,
-            username=user.username,
+            username=user.nickname,
             email=user.email,
             is_admin=user.is_admin,
         )

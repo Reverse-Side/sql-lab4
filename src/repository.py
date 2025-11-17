@@ -9,6 +9,11 @@ from src.filter import Filter, FilterHeadler, Op
 from src.interface import IRepository
 from typing import TypeVar, Generic
 
+from src.users.models import UserORM
+from src.auth.models import RefreshTokenORM  
+from src.events.models import EventORM
+from src.tickets.models import TicketsORM
+
 
 def execute(func: Callable):
     async def wrapper(*args, **kwargs):
@@ -26,10 +31,12 @@ T = TypeVar("T", bound=Base)
 
 
 class RepositoryORM(Generic[T]):
+    model: type[T] = None
 
-    def __init__(self, session: AsyncSession, model: type[T]):
+    def __init__(self, session: AsyncSession):
+        if self.model is None:
+            raise NotImplementedError("Repository must specify a model class.")
         self.session = session
-        self.model = model
         self._filter = FilterHeadler(self.model)
 
     @execute
@@ -87,3 +94,9 @@ class RepositoryORM(Generic[T]):
             raise TypeError(f"_filter must be Filter, not {type(_filter)}")
         _filter.overload(**_filters)
         return self._filter.to_conditions(_filter)
+
+class EventRepository(RepositoryORM[EventORM]):
+    model = EventORM  
+
+class TicketRepository(RepositoryORM[TicketsORM]):
+    model = TicketsORM 

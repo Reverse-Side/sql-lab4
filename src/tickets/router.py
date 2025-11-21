@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, status, HTTPException
-from typing import List
-from src.auth.dependencies import AuthUser 
-from src.tickets.schemas import TicketResponse, TicketCreate
-from src.tickets.service import TicketServiceDep 
 
+from fastapi import APIRouter, HTTPException, status
 
+from src.auth.dependencies import AuthUser
+from src.tickets.schemas import TicketCreate, TicketResponse
+from src.tickets.service import TicketServiceDep
 
 router = APIRouter(
     prefix="/tickets",
@@ -43,7 +42,7 @@ async def buy_ticket(
     
 @router.get(
     "/{ticket_id}",
-    response_model=TicketResponse,
+    response_model=list[TicketResponse],
     summary="Отримати квиток за ID (тільки для власника)"
 )
 async def get_my_ticket(ticket_id: int, ticket_service: TicketServiceDep, current_user: AuthUser):

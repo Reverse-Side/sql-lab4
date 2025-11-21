@@ -1,18 +1,17 @@
-from fastapi import Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
+
 from src.auth.exceptions import (
     AuthenticationError,
     InvalidRefreshToken,
     LoginError,
     RegistrationError,
 )
-from src.users.interface import IUser
+from src.auth.jwt_codec import JWTAuthCodec, get_jwt_codec
 from src.auth.schemas import (
     ACCESS_TOKEN,
     REFRESH_TOKEN,
-    LogOutResponce,
     LoginResponce,
+    LogOutResponce,
     TokenCreate,
     TokenSchemas,
     UserLogin,
@@ -21,8 +20,8 @@ from src.auth.schemas import (
 from src.exceptions import IntegrityRepositoryError
 from src.filter import eq
 from src.interface import IUnitOfWork
-from src.auth.jwt_codec import JWTAuthCodec, get_jwt_codec
 from src.unit_of_work import get_unit_of_work
+from src.users.interface import IUser
 
 
 class AuthService:
@@ -75,7 +74,7 @@ class AuthService:
         async with self.uow as work:
             token = await work.refresh_tokens.find(token=eq(refresh_token))
             if token:
-                if token.revoked == False:
+                if not token.revoked:
                     token_model = await work.refresh_tokens.update(
                         _id=token.id, data={"revoked": True}
                     )
@@ -95,7 +94,7 @@ class AuthService:
 
     def checking_invalid_token(self, refresh_token):
         try:
-            token_info = self.codec.decode(refresh_token)
+            self.codec.decode(refresh_token)
         except InvalidTokenError:
             InvalidRefreshToken("token invalid ")
 

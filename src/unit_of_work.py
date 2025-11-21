@@ -1,18 +1,13 @@
 import logging
-from typing import TYPE_CHECKING
-from src.auth.models import RefreshTokenORM
-from src.events.models import EventORM
-from src.events.repository import EventRepository
-from src.interface import IUnitOfWork
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
-from src.database import new_async_session
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from src.auth.repository import RefreshTokenRepository
-from src.users.models import UserORM
-from src.users.repository import UserRepository
-
-from src.tickets.models import TicketsORM 
+from src.database import new_async_session
+from src.events.repository import EventRepository
+from src.interface import IUnitOfWork
 from src.tickets.repository import TicketsRepository
+from src.users.repository import UserRepository
 
 log = logging.getLogger(__name__)
 

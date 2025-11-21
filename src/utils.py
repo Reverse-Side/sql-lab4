@@ -1,14 +1,13 @@
-from collections.abc import Callable
-from functools import wraps
+import importlib
 import logging
 import os
+from collections.abc import Callable
+from functools import wraps
+from pathlib import Path
 from types import ModuleType
 from typing import TypeVar
-from fastapi import APIRouter
-import importlib
-from pathlib import Path
 
-from src.database import Base
+from fastapi import APIRouter
 
 log = logging.getLogger("uvicorn")
 

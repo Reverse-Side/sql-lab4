@@ -1,10 +1,12 @@
-from typing import List, Annotated
+from typing import Annotated, List
+
 from fastapi import Depends, HTTPException, status
+
+from src.exceptions import EntityNotFoundError, IntegrityRepositoryError
+from src.filter import eq
+from src.interface import IUnitOfWork
 from src.tickets.schemas import TicketCreate, TicketResponse
 from src.unit_of_work import get_unit_of_work
-from src.filter import eq
-from src.exceptions import EntityNotFoundError, IntegrityRepositoryError
-from src.interface import IUnitOfWork
 
 
 class TicketService:
@@ -29,7 +31,7 @@ class TicketService:
             
     async def get_tickets_by_owner(self, owner_id: int) -> List[TicketResponse]:
         async with self.uow as work:
-            tickets = await work.tickets.filter(owner_id=eq(owner_id))
+            tickets = await work.tickets.find_all(owner_id=eq(owner_id))
             return [TicketResponse.model_validate(ticket) for ticket in tickets]
         
     async def get_tickets_by_id(self, ticket_id: int) -> TicketResponse:

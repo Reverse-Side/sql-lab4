@@ -1,8 +1,10 @@
 from functools import wraps
-from fastapi import APIRouter, HTTPException, Response, status
-from src.auth.exceptions import InvalidRefreshToken, RegistrationError, LoginError
-from src.auth.schemas import UserRegister, UserLogin, TokenSchemas, LoginResponce
+
+from fastapi import APIRouter, HTTPException
+
 from src.auth.dependencies import AuthServiceDep
+from src.auth.exceptions import InvalidRefreshToken, LoginError, RegistrationError
+from src.auth.schemas import LoginResponce, TokenSchemas, UserLogin, UserRegister
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 

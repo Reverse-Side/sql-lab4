@@ -1,9 +1,7 @@
-from src.database import Base
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, String, Enum, Boolean
-from sqlalchemy.orm import relationship
-from datetime import datetime
 
+from src.database import Base
 from src.mixin_models import CreatedAtMixin
 
 

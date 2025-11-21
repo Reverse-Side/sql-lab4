@@ -1,12 +1,13 @@
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, Sequence, overload
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
 
 from src.filter import Filter, Op
+
 if TYPE_CHECKING:
-    from src.users.interface import IUserRepository
     from src.auth.interface import IRefreshTokenRepository
     from src.events.interface import IEventRepository
+    from src.tickets.interface import ITicketsRepository
+    from src.users.interface import IUserRepository
 
 T = TypeVar("T")
 
@@ -34,6 +35,7 @@ class IUnitOfWork(Generic[T],Protocol):
     users:"IUserRepository"
     refresh_tokens:"IRefreshTokenRepository"
     events:"IEventRepository"
+    tickets: "ITicketsRepository"
     async def __aenter__(self) -> "IUnitOfWork": ...
     async def __aexit__(self, *args) -> None: ...
 

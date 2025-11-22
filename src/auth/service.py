@@ -66,7 +66,7 @@ class AuthService:
             await work.commit()  # type: ignore
             if user.is_active:  # type: ignore
                 self.checking_invalid_token(refresh_token)
-                return self.__genarate_token(user)
+                return self.__genarate_token(user,type_=ACCESS_TOKEN)
             raise InvalidRefreshToken("User is ban")
 
     async def logout(self, refresh_token: str):

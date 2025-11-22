@@ -36,11 +36,11 @@ class TicketService:
             tickets_models =  [TicketResponse.model_validate(ticket) for ticket in tickets]
             return Collection(offset=pagin.offset,limit=pagin.limit,collection=tickets_models,size=len(tickets_models))
         
-    async def get_tickets_by_id(self, ticket_id: int) -> TicketResponse:
+    async def get_ticket_by_id(self, ticket_id: int) -> TicketResponse:
         async with self.uow as work:
             ticket = await work.tickets.find(id=eq(ticket_id))
             if not ticket:
-                raise EntityNotFoundError(f"Ticket with id {ticket_id} not found")
+                return ticket
             return TicketResponse.model_validate(ticket)
 
 

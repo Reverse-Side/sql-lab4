@@ -13,7 +13,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/",
+    "",
     response_model=TicketResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Придбати квиток на подію (потрібна авторизація)",
@@ -50,11 +50,15 @@ async def get_my_ticket(ticket_service: TicketServiceDep, current_user: AuthUser
     tickets = await ticket_service.get_tickets_by_owner(owner_id=current_user.sub,pagin=pagin)
     return tickets
 
+@router.get(
+    "/{ticket_id}",
+    response_model=TicketResponse,
+    summary="Отримати квиток за ID "
+)
+async def get_ticket_by_id(ticket_id: int, ticket_service: TicketServiceDep):
+    ticket = await ticket_service.get_ticket_by_id(ticket_id=ticket_id)
 
-async def get_ticket_by_id(ticket_id: int, ticket_service: TicketServiceDep, current_user: AuthUser):
-    ticket = await ticket_service.get_ticket_by_id(ticket_id)
-
-    if not ticket or ticket.owner_id != current_user.sub:
+    if not ticket:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ticket not found",

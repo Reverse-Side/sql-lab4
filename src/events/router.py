@@ -14,7 +14,7 @@ router = APIRouter(
 
 
 @router.post(
-    "/",
+    "",
     response_model=EventResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create event (потрібна авторизація)",
@@ -51,7 +51,7 @@ async def get_event(
 
 
 @router.get(
-    "/",
+    "",
     response_model=Collection[EventResponse],
     summary="Отримати список усіх подій",
 )

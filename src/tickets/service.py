@@ -1,10 +1,11 @@
-from typing import Annotated, List
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 
 from src.exceptions import EntityNotFoundError, IntegrityRepositoryError
 from src.filter import eq
 from src.interface import IUnitOfWork
+from src.mixin_schemas import Collection, Pagination
 from src.tickets.schemas import TicketCreate, TicketResponse
 from src.unit_of_work import get_unit_of_work
 
@@ -29,10 +30,11 @@ class TicketService:
             except IntegrityRepositoryError:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ticket already exists")
             
-    async def get_tickets_by_owner(self, owner_id: int) -> List[TicketResponse]:
+    async def get_tickets_by_owner(self, owner_id: int,pagin:Pagination) -> Collection[TicketResponse]:
         async with self.uow as work:
-            tickets = await work.tickets.find_all(owner_id=eq(owner_id))
-            return [TicketResponse.model_validate(ticket) for ticket in tickets]
+            tickets = await work.tickets.find_all(owner_id=eq(owner_id),offset=pagin.offset,limit=pagin.limit)
+            tickets_models =  [TicketResponse.model_validate(ticket) for ticket in tickets]
+            return Collection(offset=pagin.offset,limit=pagin.limit,collection=tickets_models,size=len(tickets_models))
         
     async def get_tickets_by_id(self, ticket_id: int) -> TicketResponse:
         async with self.uow as work:

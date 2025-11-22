@@ -1,12 +1,11 @@
-from typing import List
-from src.interface import IUnitOfWork
+
+from src.events.exceptions import EventNotFoundError, EventPermissionError
+from src.events.schemas import EventCreate, EventResponse, EventUpdate
 from src.filter import eq
-from .schemas import EventCreate, EventUpdate, EventResponse
-from .models import EventORM
-from .exceptions import EventNotFoundError, EventPermissionError
-from src.tickets.service import TicketServiceDep
+from src.interface import IUnitOfWork
+from src.mixin_schemas import Collection, Pagination
 from src.tickets.schemas import TicketCreate
-from datetime import datetime
+from src.tickets.service import TicketServiceDep
 
 
 class EventService:
@@ -60,12 +59,13 @@ class EventService:
 
             return EventResponse.model_validate(event_orm)
 
-    async def get_all_events(self) -> List[EventResponse]:
+    async def get_all_events(self,pagin:Pagination) -> Collection[EventResponse]:
         
         async with self.uow as work:
-            events_orm = await work.events.find_all()
+            events_orm = await work.events.find_all(offset=pagin.offset,limit=pagin.limit)
 
-            return [EventResponse.model_validate(e) for e in events_orm]
+            events_models = [EventResponse.model_validate(e) for e in events_orm]
+            return Collection(offset =pagin.offset,limit=pagin.limit,collection=events_models,size=len(events_models))
 
     async def update_event(
         self, event_id: int, update_data: EventUpdate, current_user_id: int

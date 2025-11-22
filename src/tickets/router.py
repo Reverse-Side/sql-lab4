@@ -1,7 +1,8 @@
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.auth.dependencies import AuthUser
+from src.mixin_schemas import Collection, Pagination
 from src.tickets.schemas import TicketCreate, TicketResponse
 from src.tickets.service import TicketServiceDep
 
@@ -41,12 +42,12 @@ async def buy_ticket(
         ) 
     
 @router.get(
-    "/{ticket_id}",
-    response_model=list[TicketResponse],
+    "",
+    response_model=Collection[TicketResponse],
     summary="Отримати квиток за ID (тільки для власника)"
 )
-async def get_my_ticket(ticket_id: int, ticket_service: TicketServiceDep, current_user: AuthUser):
-    tickets = await ticket_service.get_tickets_by_owner(owner_id=current_user.sub)
+async def get_my_ticket(ticket_service: TicketServiceDep, current_user: AuthUser,pagin=Depends(Pagination)):
+    tickets = await ticket_service.get_tickets_by_owner(owner_id=current_user.sub,pagin=pagin)
     return tickets
 
 

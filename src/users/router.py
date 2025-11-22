@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from typing import Annotated
+
 from src.auth.dependencies import AuthAdmin, AuthUser
 from src.mixin_schemas import Collection, Pagination
 from src.users.dependencies import UserServiceDep
-from src.users.schemas import UserResponce, UserUpdate, UserUpdate
+from src.users.schemas import UserResponce, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -30,7 +29,7 @@ async def update_me(
 
 
 @router.get("/{user_id}", response_model=UserResponce)
-async def get_me(user_id: int, service: UserServiceDep):
+async def get_users(user_id: int, service: UserServiceDep):
     user = await service.get(_id=user_id)
     if user:
         return user
@@ -38,7 +37,7 @@ async def get_me(user_id: int, service: UserServiceDep):
 
 
 @router.patch("/{user_id}", response_model=UserResponce)
-async def update_me(
+async def update_users(
     user_id: int, user_update: UserUpdate, service: UserServiceDep, payload: AuthAdmin
 ):
     responce = await service.update(_id=user_id, data=user_update)

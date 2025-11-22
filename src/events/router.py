@@ -1,11 +1,11 @@
-from typing import List
-from fastapi import APIRouter, status, Depends, HTTPException
-from .schemas import EventCreate, EventResponse, EventUpdate
-from .service import EventService
-from .exceptions import EventNotFoundError, EventPermissionError
-from .dependencies import EventServiceDep
-from src.auth.dependencies import AuthAdmin
 
+from fastapi import APIRouter, Depends, HTTPException, status
+
+from src.auth.dependencies import AuthAdmin
+from src.events.dependencies import EventServiceDep
+from src.events.exceptions import EventNotFoundError, EventPermissionError
+from src.events.schemas import EventCreate, EventResponse, EventUpdate
+from src.mixin_schemas import Collection, Pagination
 
 router = APIRouter(
     prefix="/events",
@@ -52,15 +52,14 @@ async def get_event(
 
 @router.get(
     "/",
-    response_model=List[EventResponse],
+    response_model=Collection[EventResponse],
     summary="Отримати список усіх подій",
 )
 async def get_all_events(
-    # ВИПРАВЛЕНО: Видалено '= Depends()'
-    service: EventServiceDep,
+    service: EventServiceDep,pagin=Depends(Pagination)
 ):
     """Повертає список усіх подій, доступних у системі."""
-    return await service.get_all_events()
+    return await service.get_all_events(pagin)
 
 
 @router.patch(

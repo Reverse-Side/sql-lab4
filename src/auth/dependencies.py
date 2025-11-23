@@ -10,28 +10,50 @@ AuthServiceDep = Annotated[IAuthService, Depends(get_user_servise)]
 
 bearer = HTTPBearer()
 
-
-def get_auth(
+# Базова функція: отримує токен і повертає TokenInfo або викликає 401
+def get_token_info(
     service: AuthServiceDep, creds: HTTPAuthorizationCredentials = Depends(bearer)
-):
+) -> TokenInfo:
+    """Перевіряє дійсність токена і повертає payload (TokenInfo)."""
     try:
         token = creds.credentials
         token_info = service.auth(token)
+        
+        # Якщо токен не пройшов перевірку (TokenInfo = None), це 401
         if token_info is None:
-            raise HTTPException(403, detail="Auth not user")
+            raise HTTPException(status_code=401, detail="Invalid credentials or token expired")
+        
         return token_info
+    
     except AuthenticationError:
-        raise HTTPException(403, detail="Auth not user")
+        # Якщо виникла помилка під час обробки токена, це також 401
+        raise HTTPException(status_code=401, detail="Invalid authentication token")
 
 
-AuthUser = Annotated[TokenInfo, Depends(get_auth)]
+# AuthAny: Будь-який аутентифікований користувач (Адмін чи Звичайний)
+AuthAny = Annotated[TokenInfo, Depends(get_token_info)]
 
 
-def get_admin(user: AuthUser) -> TokenInfo:
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="Only admin")
+# AuthUser: Будь-який аутентифікований користувач, який НЕ є адміністратором
+def get_user_only(token_info: AuthAny) -> TokenInfo:
+    if token_info.is_admin:
+        # ❌ ВИПРАВЛЕНО: Тепер ми повертаємо 403, оскільки користувач аутентифікований, але його роль заборонена
+        raise HTTPException(status_code=403, detail="Admin access denied for this endpoint") 
 
-    return user
+    return token_info
 
 
+# AuthUser: Залежність для звичайного користувача (не адміна)
+AuthUser = Annotated[TokenInfo, Depends(get_user_only)]
+
+
+# AuthAdmin: Користувач повинен бути адміністратором
+def get_admin(token_info: AuthAny) -> TokenInfo:
+    if not token_info.is_admin:
+        raise HTTPException(status_code=403, detail="Only admin access allowed")
+
+    return token_info
+
+
+# AuthAdmin: Залежність для адміністратора
 AuthAdmin = Annotated[TokenInfo, Depends(get_admin)]

@@ -8,6 +8,7 @@ from src.events.repository import EventRepository
 from src.interface import IUnitOfWork
 from src.tickets.repository import TicketsRepository
 from src.users.repository import UserRepository
+from src.seats.repository import SeatsRepository
 
 log = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.refresh_tokens: RefreshTokenRepository
         self.events: EventRepository
         self.tickets: TicketsRepository
+        self.seats: SeatsRepository
 
     async def __aenter__(self):
         self.session: AsyncSession = self.session_factory()
@@ -26,6 +28,7 @@ class SqlAlchemyUnitOfWork(IUnitOfWork):
         self.refresh_tokens = RefreshTokenRepository(self.session)
         self.events = EventRepository(self.session)
         self.tickets = TicketsRepository(self.session)
+        self.seats = SeatsRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):

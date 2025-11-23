@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from src.users.models import UserORM
     from src.tickets.models import TicketsORM
+    from src.seats.models import SeatsORM
 
 class EventORM(Base, CreatedAtMixin):
     __tablename__ = "events"
@@ -25,3 +26,5 @@ class EventORM(Base, CreatedAtMixin):
         back_populates="event",
         cascade="all, delete-orphan",
     )
+    seats: Mapped[list["SeatsORM"]] = relationship(
+        back_populates="event")

@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from src.events.interface import IEventRepository
     from src.tickets.interface import ITicketsRepository
     from src.users.interface import IUserRepository
+    from src.seats.interface import ISeatsRepository
 
 T = TypeVar("T")
 
@@ -36,6 +37,7 @@ class IUnitOfWork(Generic[T],Protocol):
     refresh_tokens:"IRefreshTokenRepository"
     events:"IEventRepository"
     tickets: "ITicketsRepository"
+    seats: "ISeatsRepository"
     async def __aenter__(self) -> "IUnitOfWork": ...
     async def __aexit__(self, *args) -> None: ...
 

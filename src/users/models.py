@@ -7,10 +7,8 @@ from src.auth.models import RefreshTokenORM
 from src.database import Base
 from src.events.models import EventORM
 from src.mixin_models import CreatedAtMixin
-
-if TYPE_CHECKING:
-    from src.payments.models import PaymentORM
-    from src.tickets.models import TicketsORM
+from src.payments.models import PaymentORM
+from src.tickets.models import TicketsORM
 
 
 class UserORM(Base, CreatedAtMixin):

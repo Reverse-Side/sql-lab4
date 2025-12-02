@@ -1,13 +1,15 @@
 from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String
+
 from src.auth.models import RefreshTokenORM
 from src.database import Base
 from src.events.models import EventORM
 from src.mixin_models import CreatedAtMixin
-from sqlalchemy import Boolean, text
 
 if TYPE_CHECKING:
+    from src.payments.models import PaymentORM
     from src.tickets.models import TicketsORM
 
 
@@ -28,4 +30,7 @@ class UserORM(Base, CreatedAtMixin):
     )
     tickets: Mapped[list["TicketsORM"]] = relationship(
         "TicketsORM", back_populates="owner", cascade="all, delete-orphan"
+    )
+    payments: Mapped[list["PaymentORM"]] = relationship(
+        "PaymentORM", back_populates="user", cascade="all, delete-orphan"
     )

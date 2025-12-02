@@ -1,23 +1,28 @@
-from typing import List, Annotated
+from typing import Annotated, List
+
 from fastapi import Depends, HTTPException, status
-from src.seats.schemas import SeatCreate, SeatResponse
-from src.seats.models import SeatsORM 
-from src.unit_of_work import get_unit_of_work
-from src.filter import eq 
+
 from src.exceptions import EntityNotFoundError, IntegrityRepositoryError
+from src.filter import eq
 from src.interface import IUnitOfWork
+from src.mixin_schemas import Collection, Pagination
+from src.seats.models import SeatsORM
+from src.seats.schemas import SeatCreate, SeatResponse
+from src.unit_of_work import get_unit_of_work
 
 
 class SeatService:
-    def __init__(self, uow:IUnitOfWork):
+    def __init__(self, uow: IUnitOfWork):
         self.uow = uow
 
     async def add_seat(self, seat_date: SeatCreate) -> SeatResponse:
         async with self.uow as work:
-            event = await work.events.find(id = eq(seat_date.event_id))
+            event = await work.events.find(id=eq(seat_date.event_id))
             if not event:
-                raise EntityNotFoundError(f"Event with id {seat_date.event_id} not found")
-            
+                raise EntityNotFoundError(
+                    f"Event with id {seat_date.event_id} not found"
+                )
+
             data_to_add = seat_date.model_dump()
 
             try:
@@ -25,18 +30,26 @@ class SeatService:
                 await work.commit()
                 return SeatResponse.model_validate(new_seat)
             except IntegrityRepositoryError:
-               raise HTTPException(
+                raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Seat with this row and number already exists for this event."
+                    detail="Seat with this row and number already exists for this event.",
                 )
-    async def get_available_seats(self, event_id: int) -> List[SeatResponse]:
+
+    async def get_available_seats(
+        self, event_id: int, pagin: Pagination
+    ) -> List[SeatResponse]:
         async with self.uow as work:
-            seats = await work.seats.filter(
-                event_id=eq(event_id),
-                is_reserved=eq(False)
+            seats = await work.seats.find_all(
+                event_id=eq(event_id), is_reserved=eq(False)
             )
-            return [SeatResponse.model_validate(seat) for seat in seats]
-        
+            seat_models = [SeatResponse.model_validate(seat) for seat in seats]
+            return Collection(
+                offset=pagin.offset,
+                limit=pagin.limit,
+                collection=seat_models,
+                size=len(seat_models),
+            )
+
     async def reserve_seat(self, seat_id: int, commit: bool = True) -> SeatResponse:
         async with self.uow as work:
             seat = await work.seats.find(id=eq(seat_id))
@@ -45,19 +58,16 @@ class SeatService:
             if seat.is_reserved:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail="Seat is already reserved."
+                    detail="Seat is already reserved.",
                 )
             updated_seat_orm = await work.seats.update(
-                id=seat_id,
-                data={"is_reserved": True}
+                id=seat_id, data={"is_reserved": True}
             )
-            
+
             if commit:
                 await work.commit()
-                
+
             return SeatResponse.model_validate(updated_seat_orm)
-
-
 
 
 def get_seat_service(uow: Annotated[IUnitOfWork, Depends(get_unit_of_work)]):

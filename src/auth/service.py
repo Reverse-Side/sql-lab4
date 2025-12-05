@@ -1,3 +1,5 @@
+from enum import verify
+
 from jwt import InvalidTokenError
 
 from src.auth.exceptions import (
@@ -7,6 +9,7 @@ from src.auth.exceptions import (
     RegistrationError,
 )
 from src.auth.jwt_codec import JWTAuthCodec, get_jwt_codec
+from src.auth.password import hash_password, verify_password
 from src.auth.schemas import (
     ACCESS_TOKEN,
     REFRESH_TOKEN,
@@ -36,19 +39,17 @@ class AuthService:
 
     async def login(self, user_login: UserLogin):
         async with self.uow as work:
-            # TODO хешування пароля
-            hashed_password = user_login.password
             user = await work.users.find(email=eq(user_login.email))
-            if not user or user.password != hashed_password:
+            if not user or not verify_password(user_login.password, user.password):
                 raise LoginError("Uncorrect password")
             return await self.__genarate_tokens(user, work)
 
     async def register(self, user_data: UserRegister):
         async with self.uow as work:
-            # TODO хешування пароля
-            hashed_password = user_data.password
-            user_data.password = hashed_password
             try:
+                hashed_password = hash_password(user_data.password)
+                user_data.password = hashed_password
+
                 user = await work.users.add(user_data.model_dump())
                 return await self.__genarate_tokens(user, work)
             except IntegrityRepositoryError:
@@ -66,7 +67,7 @@ class AuthService:
             await work.commit()  # type: ignore
             if user.is_active:  # type: ignore
                 self.checking_invalid_token(refresh_token)
-                return self.__genarate_token(user,type_=ACCESS_TOKEN)
+                return self.__genarate_token(user, type_=ACCESS_TOKEN)
             raise InvalidRefreshToken("User is ban")
 
     async def logout(self, refresh_token: str):

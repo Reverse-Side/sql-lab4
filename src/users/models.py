@@ -13,7 +13,7 @@ from src.tickets.models import TicketsORM
 
 class UserORM(Base, CreatedAtMixin):
     __tablename__ = "users"
-    nickname: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    nickname: Mapped[str] = mapped_column(String(50), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True)
     password: Mapped[str]
 

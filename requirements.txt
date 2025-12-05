@@ -8,3 +8,5 @@ pydantic[email]
 pytest
 asyncpg
 PyJWT[crypto]
+aiosqlite
+pytest-asyncio

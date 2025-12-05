@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from typing import Any
 import jwt
+from src.auth.schemas import TokenCreate, TokenInfo
 from src.config import settings
 
 
@@ -13,18 +14,24 @@ class JWTAuthCodec:
         self.__expire_minutes = expire_minutes
 
     def decode(self, token: str | bytes):
-        return jwt.decode(
+        payload = jwt.decode(
             token,
             self.__public_key,
             algorithms=self.__algorithm,
         )
+        payload["sub"] = int(payload["sub"])
+        payload = TokenInfo(**payload)
+        if payload.exp >= datetime.now(timezone.utc):
+            return payload
+        raise jwt.InvalidTokenError("exipire token")
 
     def encode(
         self,
-        payload: dict[str, Any],
+        payload: TokenCreate,
         expire_minutes: int | None = None,
     ):
-        to_encodes = payload.copy()
+        to_encodes = payload.model_dump()
+        to_encodes["sub"] = str(payload.sub)
         now = datetime.now(timezone.utc)
         if expire_minutes:
             expire = now + timedelta(minutes=expire_minutes)

@@ -1,15 +1,8 @@
-from sqlalchemy import select
-from src.repository import RepositoryORM, execute
-from src.auth.models import UserORM
-
-from src.auth.interface import IUserRepository
+from src.auth.models import RefreshTokenORM
+from src.repository import RepositoryORM
 
 
-class UserRepositoryORM(RepositoryORM, IUserRepository):
-    model = UserORM
+class RefreshTokenRepository(RepositoryORM[RefreshTokenORM]):
+    model = RefreshTokenORM
+    pass
 
-    @execute
-    async def find_email(self, email: str):
-        stmt = select(self.model).where(self.model.email == email)
-        result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()

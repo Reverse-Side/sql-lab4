@@ -1,67 +1,130 @@
-from src.database import get_session
-from src.auth.models import UserORM
-from src.auth.schemas import TokenSchemas, UserLogin, UserRegister, UserResponce
+from enum import verify
+
+from jwt import InvalidTokenError
+
+from src.auth.exceptions import (
+    AuthenticationError,
+    InvalidRefreshToken,
+    LoginError,
+    RegistrationError,
+)
+from src.auth.jwt_codec import JWTAuthCodec, get_jwt_codec
+from src.auth.password import hash_password, verify_password
+from src.auth.schemas import (
+    ACCESS_TOKEN,
+    REFRESH_TOKEN,
+    LoginResponce,
+    LogOutResponce,
+    TokenCreate,
+    TokenSchemas,
+    UserLogin,
+    UserRegister,
+)
+from src.exceptions import IntegrityRepositoryError
+from src.filter import eq
 from src.interface import IUnitOfWork
-from src.auth.auth import JWTAuthCodec, get_jwt_codec
 from src.unit_of_work import get_unit_of_work
+from src.users.interface import IUser
 
 
-class UserService:
-    model = UserORM
+class AuthService:
 
-    def __init__(self, uow: IUnitOfWork, codec: JWTAuthCodec):
+    def __init__(
+        self,
+        uow: IUnitOfWork,
+        codec: JWTAuthCodec,
+    ):
         self.uow = uow
         self.codec = codec
 
     async def login(self, user_login: UserLogin):
         async with self.uow as work:
+            user = await work.users.find(email=eq(user_login.email))
+            if not user or not verify_password(user_login.password, user.password):
+                raise LoginError("Uncorrect password")
+            return await self.__genarate_tokens(user, work)
 
-            # TODO хешування пароля
-            hashed_password = user_login.password
-
-            user = await work.users.find_email(user_login.email)
-
-            if not user or user.password != hashed_password:
-                return
-
-            return self.__genarate_token(user.id)
-
-    async def register(self, user: UserRegister):
+    async def register(self, user_data: UserRegister):
         async with self.uow as work:
-            # TODO хешування пароля
-            hashed_password = user.password
-            user.password = hashed_password
             try:
-                new_user_id = await work.users.add(user.model_dump())
-                await work.commit()
-                return self.__genarate_token(new_user_id)
-            except ValueError:
-                await work.rollback()
-                raise ValueError("User with this email already exists.")
+                hashed_password = hash_password(user_data.password)
+                user_data.password = hashed_password
 
-    async def get(self, user_id: int):
+                user = await work.users.add(user_data.model_dump())
+                return await self.__genarate_tokens(user, work)
+            except IntegrityRepositoryError:
+                raise RegistrationError("It email is register")
+
+    async def refresh(self, refresh_token: str):
         async with self.uow as work:
-            user = await work.users.get(user_id)
-            if not user:
-                return
-            return self.__user_responce(user)
+            token = await work.refresh_tokens.find(token=eq(refresh_token))
 
-    async def delele(self, user_id: int):
+            if not token:
+                raise InvalidRefreshToken("token invalid ")
+            if token.revoked:  # type: ignore
+                raise InvalidRefreshToken("Token revoked")
+            user = await work.users.find(id=eq(token.user_id))
+            await work.commit()  # type: ignore
+            if user.is_active:  # type: ignore
+                self.checking_invalid_token(refresh_token)
+                return self.__genarate_token(user, type_=ACCESS_TOKEN)
+            raise InvalidRefreshToken("User is ban")
+
+    async def logout(self, refresh_token: str):
+        self.checking_invalid_token(refresh_token)
         async with self.uow as work:
-            await work.users.delete(user_id)
+            token = await work.refresh_tokens.find(token=eq(refresh_token))
+            if token:
+                if not token.revoked:
+                    token_model = await work.refresh_tokens.update(
+                        _id=token.id, data={"revoked": True}
+                    )
+                    return LogOutResponce(revoked=token_model.token)
 
-    def __genarate_token(self, _id: int):
-        token = self.codec.encode({"uid": _id})
-        return TokenSchemas(token=token)
+            raise InvalidRefreshToken()
 
-    def __user_responce(self, new_user: dict):
-        return UserResponce(
-            id=new_user.id,
-            nickname=new_user.nickname,
-            email=new_user.email,
-            image=new_user.image_url,
+    def auth(self, token: str):
+        try:
+
+            token_info = self.codec.decode(token)
+            if token_info.type != ACCESS_TOKEN:
+                raise AuthenticationError("Is not access token")
+            return token_info
+        except InvalidTokenError:
+            AuthenticationError("Invalid token")
+
+    def checking_invalid_token(self, refresh_token):
+        try:
+            self.codec.decode(refresh_token)
+        except InvalidTokenError:
+            InvalidRefreshToken("token invalid ")
+
+    async def __genarate_tokens(self, user: IUser, work: IUnitOfWork):
+        refresh_token = self.__genarate_token(
+            user, type_=REFRESH_TOKEN, expire_minutes=7 * 24 * 60
         )
+        access_token = self.__genarate_token(user, type_=ACCESS_TOKEN)
+        await work.refresh_tokens.add(
+            {"token": refresh_token.token, "user_id": user.id}
+        )
+        return LoginResponce(access_token=access_token, refresh_token=refresh_token)
+
+    def __genarate_token(
+        self,
+        user: IUser,
+        type_: str,
+        expire_minutes: int = 15,
+    ):
+        payload = TokenCreate(
+            type=type_,
+            sub=user.id,
+            username=user.nickname,
+            email=user.email,
+            is_admin=user.is_admin,
+        )
+        token = self.codec.encode(payload, expire_minutes=expire_minutes)
+        return TokenSchemas(token=token)
 
 
 def get_user_servise():
-    return UserService(get_unit_of_work(), get_jwt_codec())
+    return AuthService(get_unit_of_work(), get_jwt_codec())

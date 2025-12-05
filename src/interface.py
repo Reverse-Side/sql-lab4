@@ -1,58 +1,45 @@
-from typing import Generic, Protocol, Self, overload, TypeVar
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Generic, Protocol, TypeVar
+
+from src.filter import Filter, Op
 
 if TYPE_CHECKING:
-    from src.auth.interface import IUserRepository
+    from src.auth.interface import IRefreshTokenRepository
+    from src.events.interface import IEventRepository
+    from src.tickets.interface import ITicketsRepository
+    from src.users.interface import IUserRepository
+    from src.seats.interface import ISeatsRepository
 
 T = TypeVar("T")
 
+class ICreatedAt(Protocol):
+    created_at:datetime
 
-class IRepository(Protocol):
-    @overload
-    async def add(self, entity: dict) -> int:
-        pass
+class IRepository(Generic[T], Protocol):
+    model: type[T]
 
-    @overload
-    async def get(self, _id: int) -> dict:
-        pass
+    async def add(self, data) -> T: ...
 
-    @overload
-    async def update(self, entity: dict) -> None:
-        pass
+    async def find(self, filter: Filter = Filter(), **filters: Op) -> T | None: ...
 
-    @overload
-    async def delete(self, _id: int) -> None:
-        pass
+    async def find_all(
+        self, offset: int = 0, limit: int = 10, filter: Filter = Filter(), **filters: Op
+    ) -> list[T]: ...
 
-    @overload
-    async def add(self, *entity: dict) -> list[int]:
-        pass
+    async def update(self, _id: int, data:dict) -> T: ...
 
-    @overload
-    async def get(self, *_id: int) -> list[dict]:
-        pass
-
-    @overload
-    async def update(self, *entity: dict) -> None:
-        pass
-
-    @overload
-    async def delete(self, *_id: int) -> None:
-        pass
+    async def delete(self, _id: int) -> T | None: ...
 
 
-class IUnitOfWork(Protocol):
+class IUnitOfWork(Generic[T],Protocol):
+    session:T
+    users:"IUserRepository"
+    refresh_tokens:"IRefreshTokenRepository"
+    events:"IEventRepository"
+    tickets: "ITicketsRepository"
+    seats: "ISeatsRepository"
+    async def __aenter__(self) -> "IUnitOfWork": ...
+    async def __aexit__(self, *args) -> None: ...
 
-    users: "IUserRepository"
-
-    async def __aenter__(self) -> "IUnitOfWork":
-        pass
-
-    async def __aexit__(self, *args):
-        pass
-
-    async def commit(self):
-        pass
-
-    async def rollback(self):
-        pass
+    async def commit(self) -> None: ...
+    async def rollback(self) -> None: ...

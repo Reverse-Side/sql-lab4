@@ -1,22 +1,23 @@
-class UserServiceError(Exception):
+class AuthServiceError(Exception):
     """Base exception for user service errors."""
 
     pass
 
 
-class UserNotFoundError(UserServiceError):
-    """Exception raised when a user is not found."""
-
+class LoginError(AuthServiceError):
     pass
 
 
-class UserRegistrationError(UserServiceError):
+class RegistrationError(AuthServiceError):
     """Exception raised during user registration errors."""
 
     pass
 
 
-class UserAuthenticationError(UserServiceError):
+class AuthenticationError(AuthServiceError):
     """Exception raised during user authentication errors."""
 
+    pass
+
+class InvalidRefreshToken(AuthServiceError):
     pass

@@ -1,41 +1,66 @@
 name: Report test results to Telegram
 
 on:
+  # Назва тут має ТОЧНО збігатися з назвою в YAML-файлі першого воркфлоу
   workflow_run:
-    workflows: ["ci"]  
+    workflows: ["FastAPI + Postgres CI"] 
     types:
       - completed
 
 jobs:
   notify:
+    # Важливо: використовуємо permissions, щоб дозволити читання/запуск
+    # Якщо воркфлоу не запускається, спробуйте додати ці дозволи.
+    permissions:
+      contents: read
+      actions: read
+      
     runs-on: ubuntu-latest
     steps:
       - name: Send Telegram report
+        # Встановлюємо всі змінні оточення для використання в bash
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           STATUS: ${{ github.event.workflow_run.conclusion }}
           REPO: ${{ github.repository }}
           BRANCH: ${{ github.event.workflow_run.head_branch }}
+          # Використовуємо 'head_commit' для отримання деталей коміту
           COMMIT_MSG: ${{ github.event.workflow_run.head_commit.message }}
           COMMIT_AUTHOR: ${{ github.event.workflow_run.head_commit.author.name }}
           RUN_URL: ${{ github.event.workflow_run.html_url }}
+          
         run: |
-            case "$STATUS" in
-                success) ICON="✅";;
-                failure) ICON="❌";;
-                cancelled) ICON="⚪";;
-                *) ICON="❓";;
-            esac
+          # Встановлюємо іконку відповідно до статусу
+          case "$STATUS" in
+              success) ICON="✅";;
+              failure) ICON="❌";;
+              cancelled) ICON="⚪";;
+              *) ICON="❓";;
+          esac
 
-            TEXT="📦 *${REPO}*
-            🌿 Гілка: *${BRANCH}*
-            🧑‍💻 Автор: *${COMMIT_AUTHOR}*
-            💬 Коміт: _${COMMIT_MSG}_
-            🧪 Результат: ${ICON} ${STATUS}
-            🔗 [Відкрити Workflow](${RUN_URL})"
+          # Екрануємо символи Markdown у повідомленні коміту, щоб уникнути збою
+          # Це критично, оскільки користувач може використовувати * або _ у повідомленні
+          ESCAPED_MSG=$(echo "${COMMIT_MSG}" | sed 's/[*_\[\]()~`>#\+\-=\{\}.!]/\\&/g')
 
-            curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-                -d "chat_id=${TELEGRAM_CHAT_ID}" \
-                -d "parse_mode=Markdown" \
-                -d "text=${TEXT}"
+          # Формуємо текст повідомлення
+          # Використовуємо heredoc (EOF) для багаторядкового тексту
+          # та MarkdownV2 (бо Markdown застарів)
+          TEXT=$(cat <<EOF
+          📦 *${REPO}*
+          🌿 Гілка: \`${BRANCH}\`
+          🧑‍💻 Автор: *${COMMIT_AUTHOR}*
+          💬 Коміт: \`${ESCAPED_MSG}\`
+          🧪 Результат: ${ICON} *${STATUS}*
+          🔗 [Відкрити Workflow](${RUN_URL})
+          EOF
+          )
+          
+          # Надсилаємо запит до Telegram
+          # Використовуємо -G та --data-urlencode для правильного кодування тексту
+          # та вказуємо parse_mode=MarkdownV2
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+              -G \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "parse_mode=MarkdownV2" \
+              --data-urlencode "text=${TEXT}"

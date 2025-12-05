@@ -1,34 +1,54 @@
+from functools import wraps
+
 from fastapi import APIRouter, HTTPException
-from src.auth.dependencies import UserServiceDep
-from src.auth.schemas import UserLogin, UserRegister, UserResponce, TokenSchemas
 
-router = APIRouter(tags=["users"])
+from src.auth.dependencies import AuthServiceDep
+from src.auth.exceptions import InvalidRefreshToken, LoginError, RegistrationError
+from src.auth.schemas import LoginResponce, TokenSchemas, UserLogin, UserRegister
+
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.get("/users/{user_id}")
-async def get_user(user_id: int, user_servise: UserServiceDep) -> UserResponce:
-    user = await user_servise.get(user_id)
-    if not user:
-        raise HTTPException(status_code=400, detail="Користувача не існує")
-    return user
+def check_invalid_refresh_token(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            result = await func(*args, **kwargs)
+        except InvalidRefreshToken:
+            raise HTTPException(status_code=403, detail="Invalid refresh token.")
+        return result
+
+    return wrapper
 
 
 @router.post("/register")
-async def reg_user(data: UserRegister, user_service: UserServiceDep) -> TokenSchemas:
+async def register_user(data: UserRegister, service: AuthServiceDep) -> LoginResponce:
     try:
-        user = await user_service.register(data)
-        if not user:
-            raise HTTPException(
-                status_code=400, detail="Користувача з такой поштой існує"
-            )
-        return user
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Користувача з такой поштой існує")
+        user = await service.register(data)
+    except RegistrationError:
+        raise HTTPException(
+            status_code=400, detail="A user with this email address exists."
+        )
+    return user
 
 
 @router.post("/login")
-async def login(user: UserLogin, user_servise: UserServiceDep) -> TokenSchemas:
-    token = await user_servise.login(user)
-    if not token:
-        raise HTTPException(400, "Невірний логін чи пароль")
+async def login(user: UserLogin, service: AuthServiceDep) -> LoginResponce:
+    try:
+        token = await service.login(user)
+    except LoginError:
+        raise HTTPException(status_code=400, detail="Invalid email or password.")
     return token
+
+
+@router.post("/refresh")
+@check_invalid_refresh_token
+async def refresh_token(refresh_token: str, service: AuthServiceDep) -> TokenSchemas:
+    token = await service.refresh(refresh_token)
+    return token
+
+
+@router.post("/logout")
+@check_invalid_refresh_token
+async def logout(refresh_token: str, service: AuthServiceDep):
+    return await service.logout(refresh_token)

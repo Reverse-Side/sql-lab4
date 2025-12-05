@@ -1,6 +1,14 @@
 class RepositoryError(Exception):
-    pass
+    """Базовий клас помилок репозиторію."""
 
 
-class RepositoryAddDataError(RepositoryError):
-    pass
+class EntityNotFoundError(RepositoryError):
+    """Об’єкт не знайдено."""
+
+
+class IntegrityRepositoryError(RepositoryError):
+    """Помилка цілісності даних."""
+
+
+class InvalidQueryError(RepositoryError):
+    """Некоректні параметри фільтрації або запиту."""
